@@ -176,31 +176,6 @@ class ResultSet(object):
                 filtered_resultset.add(parameters, results)
         return filtered_resultset
 
-    def refilter(self, condition):
-        """Return subset of results matching specific conditions
-
-        Parameters
-        ----------
-        condition : dict
-            Dictionary listing all parameters and values to be matched in the
-            results set. Each parameter, i.e., each key of the dictionary must
-            be an iterable object containing the path in the parameters tree
-            to the required parameter
-
-        Returns
-        -------
-        filtered_results : ResultSet
-            List of 2-tuples of filtered results, where the first element is a
-            tree of all experiment parameters and the second value is
-            a tree with experiment results.
-        """
-        filtered_resultset = ResultSet()
-        for parameters, results in self._results:
-            parameters = Tree(parameters)
-            if not parameters.match(condition):
-                filtered_resultset.add(parameters, results)
-        return filtered_resultset
-
 
 @register_results_writer('PICKLE')
 def write_results_pickle(results, path):
@@ -233,4 +208,3 @@ def read_results_pickle(path):
     """
     with open(path, 'rb') as pickle_file:
         return pickle.load(pickle_file)
-

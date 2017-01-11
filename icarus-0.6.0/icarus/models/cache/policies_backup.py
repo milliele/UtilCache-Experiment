@@ -25,7 +25,6 @@ __all__ = [
         'InCacheLfuCache',
         'PerfectLfuCache',
         'FifoCache',
-        'MusCache',
         'ClimbCache',
         'RandEvictionCache',
         'insert_after_k_hits_cache',
@@ -609,12 +608,6 @@ class Cache(object):
         """Empty the cache
         """
         raise NotImplementedError('This method is not implemented')
-
-    def update_dist(self, k, value):
-        return
-    
-    def update_freq(self):
-        return
 
 
 @register_cache_policy('NULL')
@@ -1537,87 +1530,6 @@ class RandEvictionCache(Cache):
         self._cache.clear()
 
 
-@register_cache_policy('MUS')
-class MusCache(Cache):
-    """Least Frequently Used (LFU) cache implementation
-    MUS
-    """
-
-    @inheritdoc(Cache)
-    def __init__(self, maxlen, **kwargs):
-        self._cache = {}
-        self._freq = {}
-        self._cal_freq = {}
-        self._dist = {}
-        self.t = 0
-        self._maxlen = int(maxlen)
-        if self._maxlen <= 0:
-            raise ValueError('maxlen must be positive')
-
-    @inheritdoc(Cache)
-    def __len__(self):
-        return len(self._cache)
-
-    @property
-    @inheritdoc(Cache)
-    def maxlen(self):
-        return self._maxlen
-
-    def update_dist(self, k, value):
-        self._dist[k] = value
-
-    def update_freq(self):
-        self._freq = self._cal_freq
-        self._cal_freq = {}
-
-    @inheritdoc(Cache)
-    def dump(self):
-        for k in self._cache:
-            if k not in self._freq:
-                self._freq[k] = 0
-        return sorted(self._cache, key=lambda x: (self._dist[x]*self._freq[x], self._cache[x]), reverse=True)
-
-    @inheritdoc(Cache)
-    def has(self, k):
-        return k in self._cache
-
-    @inheritdoc(Cache)
-    def get(self, k):
-        if k in self._cal_freq:
-            self._cal_freq[k] += 1
-        else:
-            self._cal_freq[k] = 1
-        if self.has(k):
-            return True
-        else:
-            return False
-
-    @inheritdoc(Cache)
-    def put(self, k):
-        if not self.has(k):
-            self.t += 1
-            self._cache[k] = self.t
-            if len(self._cache) > self._maxlen:
-                for k in self._cache:
-                    if k not in self._freq:
-                        self._freq[k] = 0
-                evicted = min(self._cache, key=lambda x: (self._dist[x]*self._freq[x], self._cache[x]))
-                del self._cache[evicted]
-                return evicted
-        return None
-
-    @inheritdoc(Cache)
-    def remove(self, k):
-        if k in self._cache:
-            self._cache.pop(k)
-            return True
-        else:
-            return False
-
-    @inheritdoc(Cache)
-    def clear(self):
-        self._cache.clear()
-
 def insert_after_k_hits_cache(cache, k=2, memory=None):
     """Return a cache inserting items only after k requests.
 
@@ -2057,5 +1969,3 @@ def ttl_cache(cache, f_time):
 
 def ttl_keyval_cache():
     pass
-
-

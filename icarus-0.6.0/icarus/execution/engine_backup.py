@@ -54,13 +54,8 @@ def exec_experiment(topology, workload, netconf, strategy, cache_policy, collect
 
     strategy_name = strategy['name']
     strategy_args = {k: v for k, v in strategy.items() if k != 'name'}
-    if strategy_name == 'POP_CACHE':
-        strategy_args['rate'] = workload.rate
-        strategy_args['zipf'] = workload.zipf
-        strategy_args['average'] = workload.average_content_num
     strategy_inst = STRATEGY[strategy_name](view, controller, **strategy_args)
 
     for time, event in workload:
         strategy_inst.process_event(time, **event)
     return collector.results()
-

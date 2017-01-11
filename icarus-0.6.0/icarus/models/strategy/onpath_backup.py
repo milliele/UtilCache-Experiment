@@ -3,7 +3,6 @@ from __future__ import division
 import random
 
 import networkx as nx
-import math
 
 from icarus.registry import register_strategy
 from icarus.util import inheritdoc, path_links
@@ -19,8 +18,6 @@ __all__ = [
        'CacheLessForMore',
        'RandomBernoulli',
        'RandomChoice',
-       'PopCache',
-       'MostUtilitarianStay'
            ]
 
 
@@ -416,111 +413,3 @@ class RandomChoice(Strategy):
             if v == designated_cache:
                 self.controller.put_content(v)
         self.controller.end_session()
-
-
-@register_strategy('POP_CACHE')
-class PopCache(Strategy):
-    """PopCache
-
-        Reference:
-        [1] Suksomboon K, Tarnoi S, Ji Y, et al. Popcache: Cache more or less based on content
-        popularity for information-centric networking[C]//Local Computer Networks (LCN), 2013
-        IEEE 38th Conference on. IEEE, 2013: 236-243.
-    """
-
-    @inheritdoc(Strategy)
-    def __init__(self, view, controller, rate, zipf, average):
-        super(PopCache, self).__init__(view, controller)
-        self.rate = rate
-        self.zipf = zipf
-        self.average = average
-        self.cache_size = view.cache_nodes(size=True)
-
-
-    @inheritdoc(Strategy)
-    def process_event(self, time, receiver, content, log):
-        # get all required data
-        source = self.view.content_source(content)
-        path = self.view.shortest_path(receiver, source)
-        # Route requests to original source and queries caches on the path
-        self.controller.start_session(time, receiver, content, log)
-        for hop in range(1, len(path)):
-            u = path[hop - 1]
-            v = path[hop]
-            self.controller.forward_request_hop(u, v)
-            if self.view.has_cache(v):
-                if self.controller.get_content(v):
-                    serving_node = v
-                    break
-        else:
-            # No cache hits, get content from source
-            self.controller.get_content(v)
-            serving_node = v
-        # Return content
-        path = list(reversed(self.view.shortest_path(receiver, serving_node)))
-        N = len([v for v in path if self.view.has_cache(v)])
-        i = N
-        for hop in range(1, len(path)):
-            u = path[hop - 1]
-            v = path[hop]
-            self.controller.forward_content_hop(u, v)
-            if v in self.cache_size:
-                i -= 1
-                if i == 1:
-                    W = 1.0
-                else:
-                    W = (N - i) * i / N / N
-                pdf = self.zipf.pdf
-                X = sum([self.cache_size[k]//self.average for k in path[hop:] if k in self.cache_size])
-                pop_cache = W * sum([1-math.exp(0-self.rate*pdf[c]) for c in range(X)])
-                if random.random() < pop_cache:
-                    self.controller.put_content(v)
-        self.controller.end_session()
-
-
-@register_strategy('MUS')
-class MostUtilitarianStay(Strategy):
-    """CentralizedMostUtilitarianStay
-    """
-
-    @inheritdoc(Strategy)
-    def __init__(self, view, controller, t_tw=10):
-        super(MostUtilitarianStay, self).__init__(view, controller)
-        self.t_tw = t_tw
-
-    @inheritdoc(Strategy)
-    def process_event(self, time, receiver, content, log):
-        if time % self.t_tw == 0:
-            self.controller.update_freq()
-        if receiver == None:
-            return
-        # get all required data
-        source = self.view.content_source(content)
-        path = self.view.shortest_path(receiver, source)
-        # Route requests to original source and queries caches on the path
-        self.controller.start_session(time, receiver, content, log)
-
-        for hop in range(1, len(path)):
-            u = path[hop - 1]
-            v = path[hop]
-            self.controller.forward_request_hop(u, v)
-            if self.view.has_cache(v):
-                if self.controller.get_content(v):
-                    serving_node = v
-                    break
-        else:
-            # No cache hits, get content from source
-            self.controller.get_content(v)
-            serving_node = v
-        # Return content
-        path = list(reversed(self.view.shortest_path(receiver, serving_node)))
-        for hop in range(1, len(path)):
-            u = path[hop - 1]
-            v = path[hop]
-            self.controller.forward_content_hop(u, v)
-            if self.view.has_cache(v):
-                self.controller.update_dist(v, hop)
-                self.controller.put_content(v)
-        self.controller.end_session()
-
-

@@ -21,17 +21,14 @@ import random
 import csv
 
 import networkx as nx
-import math
 
 from icarus.tools import TruncatedZipfDist
 from icarus.registry import register_workload
 
 __all__ = [
         'StationaryWorkload',
-        'StationaryPopWorkload',
         'GlobetraffWorkload',
         'TraceDrivenWorkload',
-        'StationaryFreqWorkload',
         'YCSBWorkload'
            ]
 
@@ -112,194 +109,6 @@ class StationaryWorkload(object):
         t_event = 0.0
         while req_counter < self.n_warmup + self.n_measured:
             t_event += (random.expovariate(self.rate))
-            if self.beta == 0:
-                receiver = random.choice(self.receivers)
-            else:
-                receiver = self.receivers[self.receiver_dist.rv() - 1]
-            content = int(self.zipf.rv())
-            log = (req_counter >= self.n_warmup)
-            event = {'receiver': receiver, 'content': content, 'log': log}
-            yield (t_event, event)
-            req_counter += 1
-        raise StopIteration()
-
-
-@register_workload('STATIONARY_POP')
-class StationaryPopWorkload(object):
-    """This function generates events on the fly, i.e. instead of creating an
-    event schedule to be kept in memory, returns an iterator that generates
-    events when needed.
-
-    This is useful for running large schedules of events where RAM is limited
-    as its memory impact is considerably lower.
-
-    These requests are Poisson-distributed while content popularity is
-    Zipf-distributed
-
-    All requests are mapped to receivers uniformly unless a positive *beta*
-    parameter is specified.
-
-    If a *beta* parameter is specified, then receivers issue requests at
-    different rates. The algorithm used to determine the requests rates for
-    each receiver is the following:
-     * All receiver are sorted in decreasing order of degree of the PoP they
-       are attached to. This assumes that all receivers have degree = 1 and are
-       attached to a node with degree > 1
-     * Rates are then assigned following a Zipf distribution of coefficient
-       beta where nodes with higher-degree PoPs have a higher request rate
-
-    Parameters
-    ----------
-    topology : fnss.Topology
-        The topology to which the workload refers
-    n_contents : int
-        The number of content object
-    alpha : float
-        The Zipf alpha parameter
-    beta : float, optional
-        Parameter indicating
-    rate : float, optional
-        The mean rate of requests per second
-    n_warmup : int, optional
-        The number of warmup requests (i.e. requests executed to fill cache but
-        not logged)
-    n_measured : int, optional
-        The number of logged requests after the warmup
-
-    Returns
-    -------
-    events : iterator
-        Iterator of events. Each event is a 2-tuple where the first element is
-        the timestamp at which the event occurs and the second element is a
-        dictionary of event attributes.
-    """
-    def __init__(self, topology, n_contents, alpha, beta=0, rate=1.0,
-                    n_warmup=10 ** 5, n_measured=4 * 10 ** 5, seed=None, **kwargs):
-        if alpha < 0:
-            raise ValueError('alpha must be positive')
-        if beta < 0:
-            raise ValueError('beta must be positive')
-        self.receivers = [v for v in topology.nodes_iter()
-                     if topology.node[v]['stack'][0] == 'receiver']
-        self.n_classes = kwargs['classes']
-        self.average_content_num = n_contents//self.n_classes
-        self.zipf = TruncatedZipfDist(alpha, self.n_classes)
-        self.n_contents = n_contents
-        self.contents = range(1, n_contents + 1)
-        self.alpha = alpha
-        self.rate = rate
-        self.n_warmup = n_warmup
-        self.n_measured = n_measured
-        random.seed(seed)
-        self.beta = beta
-        if beta != 0:
-            degree = nx.degree(self.topology)
-            self.receivers = sorted(self.receivers, key=lambda x: degree[iter(topology.edge[x]).next()], reverse=True)
-            self.receiver_dist = TruncatedZipfDist(beta, len(self.receivers))
-
-    def __iter__(self):
-        req_counter = 0
-        t_event = 0.0
-        while req_counter < self.n_warmup + self.n_measured:
-            t_event += (random.expovariate(self.rate))
-            if self.beta == 0:
-                receiver = random.choice(self.receivers)
-            else:
-                receiver = self.receivers[self.receiver_dist.rv() - 1]
-            cls = int(self.zipf.rv())
-            base = (cls - 1)*self.average_content_num + 1
-            content = random.choice(self.contents[base:base + self.average_content_num - 1])
-            log = (req_counter >= self.n_warmup)
-            event = {'receiver': receiver, 'content': content, 'log': log}
-            yield (t_event, event)
-            req_counter += 1
-        raise StopIteration()
-
-
-@register_workload('STATIONARY_FREQ')
-class StationaryFreqWorkload(object):
-    """This function generates events on the fly, i.e. instead of creating an
-    event schedule to be kept in memory, returns an iterator that generates
-    events when needed.
-
-    This is useful for running large schedules of events where RAM is limited
-    as its memory impact is considerably lower.
-
-    These requests are Poisson-distributed while content popularity is
-    Zipf-distributed
-
-    All requests are mapped to receivers uniformly unless a positive *beta*
-    parameter is specified.
-
-    If a *beta* parameter is specified, then receivers issue requests at
-    different rates. The algorithm used to determine the requests rates for
-    each receiver is the following:
-     * All receiver are sorted in decreasing order of degree of the PoP they
-       are attached to. This assumes that all receivers have degree = 1 and are
-       attached to a node with degree > 1
-     * Rates are then assigned following a Zipf distribution of coefficient
-       beta where nodes with higher-degree PoPs have a higher request rate
-
-    Parameters
-    ----------
-    topology : fnss.Topology
-        The topology to which the workload refers
-    n_contents : int
-        The number of content object
-    alpha : float
-        The Zipf alpha parameter
-    beta : float, optional
-        Parameter indicating
-    rate : float, optional
-        The mean rate of requests per second
-    n_warmup : int, optional
-        The number of warmup requests (i.e. requests executed to fill cache but
-        not logged)
-    n_measured : int, optional
-        The number of logged requests after the warmup
-
-    Returns
-    -------
-    events : iterator
-        Iterator of events. Each event is a 2-tuple where the first element is
-        the timestamp at which the event occurs and the second element is a
-        dictionary of event attributes.
-    """
-
-    def __init__(self, topology, n_contents, alpha, beta=0, rate=1.0,
-                 n_warmup=10 ** 5, n_measured=4 * 10 ** 5, seed=None, **kwargs):
-        if alpha < 0:
-            raise ValueError('alpha must be positive')
-        if beta < 0:
-            raise ValueError('beta must be positive')
-        self.receivers = [v for v in topology.nodes_iter()
-                          if topology.node[v]['stack'][0] == 'receiver']
-        self.zipf = TruncatedZipfDist(alpha, n_contents)
-        self.n_contents = n_contents
-        self.contents = range(1, n_contents + 1)
-        self.alpha = alpha
-        self.rate = rate
-        self.n_warmup = n_warmup
-        self.n_measured = n_measured
-        self.internal = kwargs['update_internal']
-        self.b_internal = 0-self.internal
-        random.seed(seed)
-        self.beta = beta
-        if beta != 0:
-            degree = nx.degree(self.topology)
-            self.receivers = sorted(self.receivers, key=lambda x: degree[iter(topology.edge[x]).next()], reverse=True)
-            self.receiver_dist = TruncatedZipfDist(beta, len(self.receivers))
-
-    def __iter__(self):
-        req_counter = 0
-        t_event = 0.0
-        while req_counter < self.n_warmup + self.n_measured:
-            t_event += (random.expovariate(self.rate))
-            # update freqency
-            if t_event - self.b_internal >= self.internal:
-                self.b_internal += self.internal * math.floor((t_event - self.b_internal)/self.internal)
-                event = {'receiver': None, 'content': None, 'log': None}
-                yield(self.b_internal, event)
             if self.beta == 0:
                 receiver = random.choice(self.receivers)
             else:
@@ -548,4 +357,3 @@ class YCSBWorkload(object):
             yield event
             req_counter += 1
         raise StopIteration()
-

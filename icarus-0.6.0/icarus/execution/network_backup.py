@@ -841,13 +841,3 @@ class NetworkController(object):
         """
         if node in self.model.local_cache:
             return self.model.local_cache[node].put(self.session['content'])
-
-    def update_freq(self):
-        for k in self.model.cache:
-            self.model.cache[k].update_freq()
-
-    def update_dist(self, v, value):
-        content = self.session['content']
-        self.model.cache[v].update_dist(content, value)
-
-
