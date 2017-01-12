@@ -22,3 +22,7 @@ To run the expriments and plot the results, execute the `run.sh` script:
 用于给实验结果画图
 ### removeresult.py
 用于删除指定实验结果里的部分数据
+### choose_results.py
+用来筛选实验结果里的数据
+### Modified-PopCache
+PopCache里的一个概率计算有问题，里面是测试修改版的PopCache的情况

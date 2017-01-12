@@ -472,7 +472,7 @@ class PopCache(Strategy):
                     W = (N - i) * i / N / N
                 pdf = self.zipf.pdf
                 X = sum([self.cache_size[k]//self.average for k in path[hop:] if k in self.cache_size])
-                pop_cache = W * sum([1-math.exp(0-self.rate*pdf[c]) for c in range(X)])
+                pop_cache = W * sum([1-math.exp(0-self.rate*pdf[c]/self.average) for c in range(X)])
                 if random.random() < pop_cache:
                     self.controller.put_content(v)
         self.controller.end_session()
@@ -522,5 +522,6 @@ class MostUtilitarianStay(Strategy):
                 self.controller.update_dist(v, hop)
                 self.controller.put_content(v)
         self.controller.end_session()
+
 
 

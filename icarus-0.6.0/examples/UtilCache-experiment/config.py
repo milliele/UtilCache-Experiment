@@ -50,6 +50,8 @@ DATA_COLLECTORS = ['CACHE_HIT_RATIO', 'LATENCY', 'LINK_LOAD', 'PATH_STRETCH']
 # alpha = 0.799999999999 would not be recognized 
 ALPHA = [0.6, 0.8, 1.0, 1.2, 1.4]
 
+# ALPHA = [1.2, 1.6, 2.0, 2.4]
+
 # Total size of network cache as a fraction of content population
 NETWORK_CACHE = [0.002, 0.004, 0.01, 0.03, 0.05]
 
@@ -84,15 +86,17 @@ TOPOLOGIES = [
 # List of caching and routing strategies
 # The code is located in ./icarus/models/strategy.py
 STRATEGIES = [
-    'MUS',
-    'POP_CACHE',
-    'LCE',  # Leave Copy Everywhere
     'HR_SYMM',  # Symmetric hash-routing
-    'PROB_CACHE'  # ProbCache
+    'PROB_CACHE',  # ProbCache
+    'POP_CACHE',
+    'MUS',
+    'LCE'  # Leave Copy Everywhere
 ]
 
+# List of caching and routing strategies
+# The code is located in ./icarus/models/strategy.py
 # STRATEGIES = [
-#     'MUS'
+#     'POP_CACHE'
 # ]
 
 # Cache replacement policy used by the network caches.
@@ -103,11 +107,12 @@ CACHE_POLICY = 'LRU'
 # Queue of experiments
 EXPERIMENT_QUEUE = deque()
 default = Tree()
-default['workload'] = {'name': 'STATIONARY',
+default['workload'] = {'name': 'STATIONARY_POP',
                        'n_contents': N_CONTENTS,
                        'n_warmup': N_WARMUP_REQUESTS,
                        'n_measured': N_MEASURED_REQUESTS,
-                       'rate': NETWORK_REQUEST_RATE
+                       'rate': NETWORK_REQUEST_RATE,
+                       'classes': N_CLASSES
                        }
 default['cache_placement']['name'] = 'UNIFORM'
 default['content_placement']['name'] = 'UNIFORM'
@@ -117,7 +122,7 @@ default['cache_policy']['name'] = CACHE_POLICY
 for alpha in ALPHA:
     for strategy in STRATEGIES:
         for topology in TOPOLOGIES:
-            if strategy != 'MUS' and strategy != 'POP_CACHE':
+            if strategy != 'MUS':
                 experiment = copy.deepcopy(default)
                 experiment['workload']['alpha'] = alpha
                 experiment['strategy']['name'] = strategy
@@ -126,10 +131,10 @@ for alpha in ALPHA:
                 experiment['desc'] = "Alpha: %s, strategy: %s, topology: %s, network cache: %s, policy: %s" \
                                      % (str(alpha), strategy, topology, str(NETWORK_CACHE[2]), CACHE_POLICY)
                 EXPERIMENT_QUEUE.append(experiment)
-            elif strategy != 'POP_CACHE':
+            else:
                 experiment = copy.deepcopy(default)
                 experiment['workload']['alpha'] = alpha
-                experiment['workload']['name'] = 'STATIONARY_FREQ'
+                experiment['workload']['name'] = 'STATIONARY_POP_FREQ'
                 experiment['workload']['update_internal'] = UPDATE_INTERNAL[2]
                 experiment['strategy']['name'] = strategy
                 experiment['strategy']['t_tw'] = UPDATE_INTERNAL[2]
@@ -140,23 +145,12 @@ for alpha in ALPHA:
                     'desc'] = "Alpha: %s, strategy: %s, topology: %s, network cache: %s, internal: %s, policy: %s" \
                               % (str(alpha), strategy, topology, str(NETWORK_CACHE[2]), str(UPDATE_INTERNAL[2]), 'MUS')
                 EXPERIMENT_QUEUE.append(experiment)
-            else:
-                experiment = copy.deepcopy(default)
-                experiment['workload']['alpha'] = alpha
-                experiment['workload']['name'] = 'STATIONARY_POP'
-                experiment['workload']['classes'] = N_CLASSES
-                experiment['strategy']['name'] = strategy
-                experiment['topology']['name'] = topology
-                experiment['cache_placement']['network_cache'] = NETWORK_CACHE[2]
-                experiment['desc'] = "Alpha: %s, strategy: %s, topology: %s, network cache: %s, policy: %s" \
-                                     % (str(alpha), strategy, topology, str(NETWORK_CACHE[2]), CACHE_POLICY)
-                EXPERIMENT_QUEUE.append(experiment)
 #
-# # Create experiments multiplexing all desired parameters
+# Create experiments multiplexing all desired parameters
 for network_cache in NETWORK_CACHE:
     for strategy in STRATEGIES:
         for topology in TOPOLOGIES:
-            if strategy != 'MUS' and strategy != 'POP_CACHE':
+            if strategy != 'MUS':
                 experiment = copy.deepcopy(default)
                 experiment['workload']['alpha'] = ALPHA[2]
                 experiment['strategy']['name'] = strategy
@@ -165,10 +159,10 @@ for network_cache in NETWORK_CACHE:
                 experiment['desc'] = "Alpha: %s, strategy: %s, topology: %s, network cache: %s, policy: %s" \
                                      % (str(ALPHA[2]), strategy, topology, str(network_cache), CACHE_POLICY)
                 EXPERIMENT_QUEUE.append(experiment)
-            elif strategy != 'POP_CACHE':
+            else:
                 experiment = copy.deepcopy(default)
                 experiment['workload']['alpha'] = ALPHA[2]
-                experiment['workload']['name'] = 'STATIONARY_FREQ'
+                experiment['workload']['name'] = 'STATIONARY_POP_FREQ'
                 experiment['workload']['update_internal'] = UPDATE_INTERNAL[2]
                 experiment['strategy']['name'] = strategy
                 experiment['strategy']['t_tw'] = UPDATE_INTERNAL[2]
@@ -179,18 +173,7 @@ for network_cache in NETWORK_CACHE:
                     'desc'] = "Alpha: %s, strategy: %s, topology: %s, network cache: %s, internal: %s, policy: %s" \
                               % (str(ALPHA[2]), strategy, topology, str(network_cache), str(UPDATE_INTERNAL[2]), 'MUS')
                 EXPERIMENT_QUEUE.append(experiment)
-            else:
-                experiment = copy.deepcopy(default)
-                experiment['workload']['alpha'] = ALPHA[2]
-                experiment['workload']['name'] = 'STATIONARY_POP'
-                experiment['workload']['classes'] = N_CLASSES
-                experiment['strategy']['name'] = strategy
-                experiment['topology']['name'] = topology
-                experiment['cache_placement']['network_cache'] = network_cache
-                experiment['desc'] = "Alpha: %s, strategy: %s, topology: %s, network cache: %s, policy: %s" \
-                                     % (str(ALPHA[2]), strategy, topology, str(network_cache), CACHE_POLICY)
-                EXPERIMENT_QUEUE.append(experiment)
-#
+
 for topology in TOPOLOGIES:
     experiment = copy.deepcopy(default)
     experiment['workload']['alpha'] = ALPHA[2]
@@ -206,4 +189,5 @@ for topology in TOPOLOGIES:
         exp['desc'] = "Alpha: %s, strategy: %s, topology: %s, network cache: %s, internal: %s, policy: %s" \
                       % (str(ALPHA[2]), 'MUS', topology, str(NETWORK_CACHE[2]), str(update_internal), 'MUS')
         EXPERIMENT_QUEUE.append(exp)
+
 

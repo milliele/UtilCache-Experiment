@@ -101,8 +101,12 @@ def run(config, results):
     settings.read_from(config)
     config_logging(settings.LOG_LEVEL)
     resultset = RESULTS_READER[settings.RESULTS_FORMAT](results)
-    desc = {'strategy':{'name':'MUS'}}
-    RESULTS_WRITER['PICKLE'](resultset.refilter(desc), 'new.txt')
+    remove = {'strategy':{'name':'POP_CACHE'}}
+    desc = {'topology': {'name': 'GEANT'},
+            'cache_placement': {'network_cache': 0.01}
+            }
+    myres = resultset.refilter(remove).filter(desc)
+    RESULTS_WRITER['PICKLE'](myres, 'new.txt')
 
 def main():
     parser = argparse.ArgumentParser(__doc__)

@@ -1,6 +1,7 @@
 # UtilCache-Experiment
 
 # Simulator
+
 ** Icarus 0.6.0** 
 
 **Homepage: **[http://icarus-sim.github.io./](http://icarus-sim.github.io./)
@@ -36,6 +37,9 @@
 
     2. 新增`STATIONARY_FREQ`
         基于`STATIONARY`修改，主要供`UTIL_CACHE`缓存策略使用。每隔固定时间间隔会向Stategy发送事件让它更新p
+
+    3. 新增`STATIONARY_POP_FREQ`
+        基于`STATIONARY_FREQ`和`STATIONARY_POP`修改，主要供`UTIL_CACHE`缓存策略使用。每隔固定时间间隔会向Stategy发送事件让它更新p，并且内容被分类
 
 * 【icarus/results/plot.py】
     1. 增加两个函数，分别用于在当前子图区域画出折线图和直方图
